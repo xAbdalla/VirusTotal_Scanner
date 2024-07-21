@@ -41,6 +41,8 @@ SUSPICIOUS_EXTENSIONS = [
     ".jar", ".php", ".py", ".sh", ".ps1"
     ]
 
+HISTORY_LOG = True  # Set to False to disable saving the history of scanned files
+LOGGING = True  # Set to False to disable logging the alerts to a file
 DEBUG = False   # True for more detailed errors, Warning: may expose sensitive information
 # Telegram message limit is 4096 characters, you can set the maximum number of messages to send per file
 MAX_MSG = 1 # 0 for unlimited
@@ -98,8 +100,8 @@ def Parse_Args():
     parser.add_argument("-f", "--cycles", type=int, help="Number of cycles to scan (0 for forever)")
     parser.add_argument("-m", "--max_msg", type=int, help="Maximum number of messages to send per file (0 for unlimited)")
     parser.add_argument("-e", "--sus_ext", help="Suspicious file extensions", nargs="+")
-    parser.add_argument("--no_send", help="Do not send alerts to Telegram", action="store_true")
     parser.add_argument("--malshare_api_key", help="MalShare API key")
+    parser.add_argument("--no_send", help="Do not send alerts to Telegram", action="store_true")
     parser.add_argument("--no_upload", help="Do not upload files to VirusTotal for scanning if not exist", action="store_false")
     parser.add_argument("--debug", help="Enable debug mode", action="store_true")
     args = parser.parse_args()
@@ -317,8 +319,9 @@ def Check_Vars():
 
 def Save_logs(message: str) -> bool:
     try:
-        with open("logs.txt", "a") as f:
-            f.write(f"\n{datetime.datetime.now().strftime('%Y-%m-%d %I:%M:%S %p')}:\n\n{message}\n\n{"="*100}\n")
+        if LOGGING:
+            with open("logs.txt", "a") as f:
+                f.write(f"\n{datetime.datetime.now().strftime('%Y-%m-%d %I:%M:%S %p')}:\n\n{message}\n\n{"="*100}\n")
         return True
     except Exception as e:
         print(f"[X] Error saving logs{f": {e}" if DEBUG else "."}")
@@ -327,17 +330,19 @@ def Save_logs(message: str) -> bool:
 
 def Save_Data(data: dict) -> bool:
     try:
-        with open("history.cache", "w") as f:
-            f.write(Encrypt(json.dumps(data, separators=(',', ':'))))
+        if HISTORY_LOG:
+            with open("history.cache", "w") as f:
+                f.write(Encrypt(json.dumps(data, separators=(',', ':'))))
         
-        data_copy = deepcopy(data)
-        for key in data_copy.keys():
-            del data_copy[key]['vt_check_again']
+        if LOGGING:
+            data_copy = deepcopy(data)
+            for key in data_copy.keys():
+                del data_copy[key]['vt_check_again']
+                
+            with open("scanned_files.json", "w") as f:
+                json.dump(data_copy, f, sort_keys=True, indent=4)
             
-        with open("scanned_files.json", "w") as f:
-            json.dump(data_copy, f, sort_keys=True, indent=4)
-        
-        del data_copy
+            del data_copy
         return True
     except Exception as e:
         print(f"[X] Error saving the history{f": {e}" if DEBUG else "."}")
@@ -349,11 +354,12 @@ def Load_Data() -> dict:
         return {}
     
     try:
-        # print("[+] Loading data from file 'history.cache'")
-        with open("history.cache", "r") as f:
-            data = json.loads(Decrypt(f.read()))
-        # print(f"[+] Data loaded successfully. ({len(data.keys())} records found)")
-        return data
+        if HISTORY_LOG:
+            if DEBUG: print("[+] Loading data from file 'history.cache'")
+            with open("history.cache", "r") as f:
+                data = json.loads(Decrypt(f.read()))
+            if DEBUG: print(f"[+] Data loaded successfully. ({len(data.keys())} records found)")
+            return data
     except Exception as e:
         print(f"[X] Error loading the history{f": {e}" if DEBUG else "."}")
         return {}
