@@ -10,7 +10,7 @@ VirusTotal Scanner is a Python script that utilizes the [VirusTotal](https://www
 
 ## Features
 - Accept both folder and file paths.
-- Accept relative or absolute paths and environment variables like `%USERNAME%` and `%TEMP%`.
+- Accept relative or absolute paths or environment variables like `%USERNAME%` and `%TEMP%`.
 - Scan the folder recursively and get all the files.
 - Do not request another scan for already scanned and notified files.
 - Can run forever and scan only new or modified files.
@@ -95,7 +95,7 @@ You have three options:
 ```
 python ./VTv3_Scanner.py
 [+] Enter your VirusTotal API key:
-[+] Enter your Telegram bot token:
+[+] Enter your Telegram bot token (Enter "No" to not send telegram messages):
 [+] Enter your Telegram chat ID:
 ```
 It will ask you to input only the required values to work and use the default for the rest:
@@ -110,6 +110,9 @@ MAX_MSG = 1
 SUSPICIOUS_EXTENSIONS = [".exe", ".dll", ".bat", ".cmd", ".vbs", ".js", ".jse", ".wsf", ".hta", ".scr", ".pif", ".msi", ".com", ".reg", ".docm", ".xlsm", ".pptm", ".jar", ".php", ".py", ".sh", ".ps1"]
 
 MALSHARE_API_KEY = %MALSHARE_API_KEY%
+HISTORY_LOG = True
+LOGGING = True
+DEBUG = False
 ```
 
 #### 2. Write the required values in the script file
@@ -118,8 +121,10 @@ Open the script file with any text editor and edit these variables at the beginn
 - Required Values:
   ```python
   VT_API_KEY = "PUT_YOUR_KEY_HERE"
+
   TELEGRAM_BOT_TOKEN = "PUT_YOUR_TOKEN_HERE"
   TELEGRAM_CHAT_ID = "PUT_YOUR_ID_HERE"
+  NO_SEND = <True|False>
 
   PATHS = ["path/to/scan_1", "path/to/scan_2", ...]
   ```
@@ -128,32 +133,44 @@ Open the script file with any text editor and edit these variables at the beginn
 - Optional Values:
   ```python
   UPLOAD = <True|False>
-  SCAN_INTERVAL = <float_number>
-  FOREVER = <integer_number>
-  MAX_MSG = <integer_number>
+  SCAN_INTERVAL = <Float>
+  FOREVER = <INT>
+  MAX_MSG = <INT>
   SUSPICIOUS_EXTENSIONS = ['.exe', '.py', '.sh', ...]
   MALSHARE_API_KEY = "PUT_YOUR_KEY_HERE"
+  HISTORY_LOG = <True|False>
+  LOGGING = <True|False>
+  DEBUG = <True|False>
   ```
 
 #### 3. Input the values as arguments in the terminal
 You can use `-h` or `--help` to assist you with the parameters:
 ```
-python ./VTv3_Scanner.py -k VT_API_KEY -t T_BOT_TOKEN -c T_CHAT_ID -p PATH_1 [PATH_2 ...] [--malshare_api_key MALSHARE_API_KEY] [-i STOP_INTERVAL] [-f CYCLES] [-m MAX_MSG] [-e SUS_EXT_1 [SUS_EXT_2 ...]] [--no_upload] [--debug]
+python ./VTv3_Scanner.py -k VT_API_KEY -p PATH_1 [PATH_2 ...] [-t T_BOT_TOKEN -c T_CHAT_ID]|[--no_send] [--malshare_api_key MALSHARE_API_KEY] [-i STOP_INTERVAL] [-f CYCLES] [-m MAX_MSG] [-e SUS_EXT_1 [SUS_EXT_2 ...]] [--no_upload] [--debug]
 
 options:
   -h, --help            Show this help message and exit
   -k, --vt_api_key      VirusTotal API key (required)
-  -t, --t_bot_token     Telegram bot token (required)
-  -c, --t_chat_id       Telegram chat ID (required)
   -p, --paths           Relative or absolute or environment variable paths are accepted to scan (required)
-  -i, --stop_interval   Stop Interval in minutes (0 for no interval and skip process check for old scans)
+  -t, --t_bot_token     Telegram bot token
+  -c, --t_chat_id       Telegram chat ID
+  -i, --stop_interval   Stop Interval in minutes (0 for no interval)
   -f, --cycles          Number of cycles to scan (0 for forever)
   -m, --max_msg         Maximum number of messages to send per file (0 for unlimited)
   -e, --sus_ext         Suspicious file extensions
-  --malshare_api_key    MalShare API key (optional)
+  --malshare_api_key    MalShare API key
+  --no_send             Do not send alerts to Telegram
   --no_upload           Do not upload files to VirusTotal for scanning if they do not exist
   --debug               Enable debug mode
 ```
+## Use Cases
+1. Set scheduled task to run the script at user login or PC start.
+
+    This Stackoverflow discussion may help you doing that: [How to run a python script using Task Scheduler with parameters](https://stackoverflow.com/questions/68010714/how-to-run-a-python-script-using-task-scheduler-with-parameters)
+      
+    You can start the script without the console window by using `pythonw.exe` instead of `python.exe`, if you want to rely on the log files and Telegram messages rather than the console prints.
+
+    * **Note**: This will require you to either edit the required values in the script file or pass them as parameters in the scheduled task command.
 
 ## Screenshots
 - Clean File
