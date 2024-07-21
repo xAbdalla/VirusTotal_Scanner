@@ -3,6 +3,50 @@
 # Github: https://github.com/xAbdalla
 
 import os
+
+#################################################################################
+# YOU NEED TO INSERT YOUR OWN API KEYS AND CHAT ID HERE TO MAKE THE SCRIPT WORK #
+
+# VirusTotal API key is required to scan files.
+VT_API_KEY = os.environ.get('VT_API_KEY', 'PUT_YOUR_KEY_HERE')   # Get free one by signing up at https://www.virustotal.com
+
+# Telegram bot token and chat ID are required to send alerts to your Telegram account.
+TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', 'PUT_YOUR_TOEKN_HERE')   # Get your token from @BotFather
+TELEGRAM_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID', 'PUT_YOUR_ID_HERE')    # Get your group chat ID from the Group URL (ex: -xxxxxxxxxx)
+NO_SEND = False  # Set to True to disable sending alerts to Telegram
+
+# Paths to monitor for malicious files. You can add relative or absolute paths and environment variables.
+PATHS = [
+    # Add your paths here (ex: r"path/to/scan_1", r"path/to/scan_2")
+    r"test_scan",
+    r'C:/Users/%USERNAME%/AppData/Roaming/Microsoft/Windows/Start Menu/Programs/Startup',
+    ]
+#################################################################################
+
+#################################################################################
+# Optional settings to customize the script behavior.
+
+UPLOAD = True   # Set to True to upload files to VirusTotal for scanning if not found in the database
+
+MALSHARE_API_KEY = os.environ.get('MALSHARE_API_KEY', 'PUT_YOUR_KEY_HERE')   # Get free one by signing up at https://malshare.com/register.php
+
+# VirusTotal public API rate limit is 4 lookups/min, 500 lookups/day, 15.5K lookups/month
+SCAN_INTERVAL = 0 # in minutes (0 for no interval and skip process check for old scans)
+FOREVER = 0  # Set to 0 to scan forever, or set to a number to scan for that number of times (ex: 10)
+
+# List of suspicious file extensions to check for
+SUSPICIOUS_EXTENSIONS = [
+    ".exe", ".dll", ".bat", ".cmd", ".vbs", ".js", ".jse", ".wsf", ".hta",
+    ".scr", ".pif", ".msi", ".com", ".reg", ".docm", ".xlsm", ".pptm",
+    ".jar", ".php", ".py", ".sh", ".ps1"
+    ]
+
+DEBUG = False   # True for more detailed errors, Warning: may expose sensitive information
+# Telegram message limit is 4096 characters, you can set the maximum number of messages to send per file
+MAX_MSG = 1 # 0 for unlimited
+#################################################################################
+
+import os
 import time
 import json
 import ctypes
@@ -24,46 +68,6 @@ if find_spec('pypiwin32') and 'pypiwin32' in find_spec('pypiwin32').name:
     import win32evtlog  # type: ignore
 if find_spec('rich') and 'rich' in find_spec('rich').name:
     from rich import print  # type: ignore
-
-#################################################################################
-# YOU NEED TO INSERT YOUR OWN API KEYS AND CHAT ID HERE TO MAKE THE SCRIPT WORK #
-
-# VirusTotal API key is required to scan files.
-VT_API_KEY = os.environ.get('VT_API_KEY', 'PUT_YOUR_KEY_HERE')   # Get free one by signing up at https://www.virustotal.com
-UPLOAD = True   # Set to True to upload files to VirusTotal for scanning if not found in the database
-
-# Telegram bot token and chat ID are required to send alerts to your Telegram account.
-TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', 'PUT_YOUR_TOEKN_HERE')   # Get your token from @BotFather
-TELEGRAM_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID', 'PUT_YOUR_ID_HERE')    # Get your group chat ID from the Group URL (ex: -xxxxxxxxxx)
-
-# Paths to monitor for malicious files. You can add relative or absolute paths and environment variables.
-PATHS = [
-    # Add your paths here (ex: r"path/to/scan_1", r"path/to/scan_2")
-    r"test_scan",
-    r'C:/Users/%USERNAME%/AppData/Roaming/Microsoft/Windows/Start Menu/Programs/Startup',
-    ]
-#################################################################################
-
-#################################################################################
-# Optional settings to customize the script behavior.
-
-MALSHARE_API_KEY = os.environ.get('MALSHARE_API_KEY', 'PUT_YOUR_KEY_HERE')   # Get free one by signing up at https://malshare.com/register.php
-
-# VirusTotal public API rate limit is 4 lookups/min, 500 lookups/day, 15.5K lookups/month
-SCAN_INTERVAL = 0 # in minutes (0 for no interval and skip process check for old scans)
-FOREVER = 0  # Set to 0 to scan forever, or set to a number to scan for that number of times (ex: 10)
-
-# List of suspicious file extensions to check for
-SUSPICIOUS_EXTENSIONS = [
-    ".exe", ".dll", ".bat", ".cmd", ".vbs", ".js", ".jse", ".wsf", ".hta",
-    ".scr", ".pif", ".msi", ".com", ".reg", ".docm", ".xlsm", ".pptm",
-    ".jar", ".php", ".py", ".sh", ".ps1"
-    ]
-
-DEBUG = False   # True for more detailed errors, Warning: may expose sensitive information
-# Telegram message limit is 4096 characters, you can set the maximum number of messages to send per file
-MAX_MSG = 1 # 0 for unlimited
-#################################################################################
 
 
 class CustomHelpFormatter(argparse.HelpFormatter):
@@ -87,22 +91,25 @@ def Parse_Args():
     parser = argparse.ArgumentParser(description="VirusTotal Scanner by xAbdalla",
                                      formatter_class=CustomHelpFormatter)
     parser.add_argument("-k", "--vt_api_key", help="VirusTotal API key (required)")
-    parser.add_argument("-t", "--t_bot_token", help="Telegram bot token (required)")
-    parser.add_argument("-c", "--t_chat_id", help="Telegram chat ID (required)")
     parser.add_argument("-p", "--paths", help="Relative or absolute or environment variable paths are accepted to scan (required)", nargs="+")
-    parser.add_argument("-i", "--stop_interval", type=float, help="Stop Interval in minutes (0 for no interval and skip process check for old scans)")
+    parser.add_argument("-t", "--t_bot_token", help="Telegram bot token")
+    parser.add_argument("-c", "--t_chat_id", help="Telegram chat ID")
+    parser.add_argument("-i", "--stop_interval", type=float, help="Stop Interval in minutes (0 for no interval)")
     parser.add_argument("-f", "--cycles", type=int, help="Number of cycles to scan (0 for forever)")
     parser.add_argument("-m", "--max_msg", type=int, help="Maximum number of messages to send per file (0 for unlimited)")
     parser.add_argument("-e", "--sus_ext", help="Suspicious file extensions", nargs="+")
-    parser.add_argument("--malshare_api_key", help="MalShare API key (optional)")
+    parser.add_argument("--no_send", help="Do not send alerts to Telegram", action="store_true")
+    parser.add_argument("--malshare_api_key", help="MalShare API key")
     parser.add_argument("--no_upload", help="Do not upload files to VirusTotal for scanning if not exist", action="store_false")
     parser.add_argument("--debug", help="Enable debug mode", action="store_true")
     args = parser.parse_args()
     
     args_dict = vars(args)
     
-    if args_dict.get('vt_api_key', None) or args_dict.get('t_bot_token', None) or args_dict.get('t_chat_id', None):
-        if not (args_dict.get('vt_api_key', None) and args_dict.get('t_bot_token', None) and args_dict.get('t_chat_id', None) and args_dict.get('paths', None)):
+    if args_dict.get('vt_api_key', None):
+        if not (args_dict.get('vt_api_key', None) and
+                ((args_dict.get('t_bot_token', None) and args_dict.get('t_chat_id', None)) or args_dict.get('no_send', False)) and
+                args_dict.get('paths', None)):
             print("[X] VirusTotal API key, Telegram bot token, Telegram chat ID, and Paths are required to proceed.\n")
             parser.print_help()
             exit()
@@ -157,6 +164,7 @@ def Parse_Args():
         else:
             MAX_MSG = MAX_MSG
         
+        NO_SEND = args_dict.get('no_send', NO_SEND)
         UPLOAD = args_dict.get('no_upload', UPLOAD)
         DEBUG = args_dict.get('debug', DEBUG)
         
@@ -232,15 +240,16 @@ def Check_Vars():
             print("[X] VirusTotal API key is required to proceed.")
             exit()
     
-    if "PUT" in TELEGRAM_BOT_TOKEN:
-        TELEGRAM_BOT_TOKEN = input("[+] Enter your Telegram bot token: ").strip()
+    if "PUT" in TELEGRAM_BOT_TOKEN and not NO_SEND:
+        TELEGRAM_BOT_TOKEN = input("[+] Enter your Telegram bot token (Enter \"No\" to not send telegram messages): ").strip()
+        if TELEGRAM_BOT_TOKEN.lower() in ['no', 'n']: NO_SEND = True
         if TELEGRAM_BOT_TOKEN and Check_Vars():
             return True
         else:
             print("[X] Telegram bot token is required to proceed.")
             exit()
     
-    if "PUT" in TELEGRAM_CHAT_ID:
+    if "PUT" in TELEGRAM_CHAT_ID and not NO_SEND:
         TELEGRAM_CHAT_ID = input("[+] Enter your Telegram chat ID: ").strip()
         if TELEGRAM_CHAT_ID and Check_Vars():
             return True
@@ -370,7 +379,7 @@ def Get_Valhalla(file_hash):
             if "results:" in response.text.lower() and "no results" not in response.text.lower():
                 return VALHALLA_URL
     except Exception as e:
-        # print(f"[X] Error querying Valhalla: {e}")
+        if DEBUG: print(f"[X] Error querying Valhalla: {e}")
         pass
     return False
 
@@ -400,8 +409,8 @@ def Get_MalShare(file_hash: str) -> str|bool:
         response = requests.get(MAL_API, timeout=15, headers=FAKE_HEADERS)
         if response.status_code == 200:
             return f"https://malshare.com/sample.php?action=detail&hash={file_hash}"
-    except:
-        # print(f"[X] Error querying MalShare: {e}")
+    except Exception as e:
+        if DEBUG: print(f"[X] Error querying MalShare: {e}")
         pass
     return False
 
@@ -580,6 +589,8 @@ def Upload_File_VT(file_path: str) -> dict:
 
 
 def Send_TeleMessage(message: str) -> bool:
+    if NO_SEND: return True
+    
     message = message.replace("`", "'")
     message = message.replace("\\", "/")
     # message = message.replace("\n\n", "\n")
