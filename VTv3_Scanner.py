@@ -86,7 +86,7 @@ class CustomHelpFormatter(argparse.HelpFormatter):
 
 
 def Parse_Args():
-    global VT_API_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, PATHS, SCAN_INTERVAL, FOREVER, SUSPICIOUS_EXTENSIONS, DEBUG, MAX_MSG, UPLOAD
+    global VT_API_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, PATHS, SCAN_INTERVAL, FOREVER, SUSPICIOUS_EXTENSIONS, DEBUG, MAX_MSG, UPLOAD, MALSHARE_API_KEY, NO_SEND
     
     parser = argparse.ArgumentParser(description="VirusTotal Scanner by xAbdalla",
                                      formatter_class=CustomHelpFormatter)
@@ -230,7 +230,11 @@ def Decrypt(source: str, key: str = str(GUID())+os.environ.get('USERNAME', '')):
 
 
 def Check_Vars():
-    global VT_API_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, PATHS, SCAN_INTERVAL, FOREVER, SUSPICIOUS_EXTENSIONS, DEBUG, MAX_MSG, MALSHARE_API_KEY
+    global VT_API_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, PATHS, SCAN_INTERVAL, FOREVER, SUSPICIOUS_EXTENSIONS, DEBUG, MAX_MSG, MALSHARE_API_KEY, NO_SEND
+    
+    if NO_SEND:
+        TELEGRAM_BOT_TOKEN = "PUT"
+        TELEGRAM_CHAT_ID = "PUT"
     
     if "PUT" in VT_API_KEY:
         VT_API_KEY = input("[+] Enter your VirusTotal API key: ").strip()
@@ -1154,7 +1158,11 @@ if __name__ == "__main__":
     print(f"[+] Suspicious Extensions: {', '.join(SUSPICIOUS_EXTENSIONS)}")
     print(f"[+] Stop Interval: {SCAN_INTERVAL} minutes")
     print(f"[+] Number of Cycles: {FOREVER if FOREVER else 'Forever'}")
-    print(f"[+] Maximum Messages per File: {MAX_MSG if MAX_MSG else 'Unlimited'}")
+    if MALSHARE_API_KEY: print(f"[+] MalShare API: Enabled")
+    if NO_SEND:
+        print(f"[+] Telegram Alert: Disabled.")
+    else:
+        print(f"[+] Telegram Alert: Enabled. ({MAX_MSG if MAX_MSG else 'Unlimited'} Msg/File)")
     try:
         if platform.system() == "Windows" and ctypes.windll.shell32.IsUserAnAdmin():
             print(f"[+] Running as Administrator. (Helps in getting more process information from Event Logs)")
