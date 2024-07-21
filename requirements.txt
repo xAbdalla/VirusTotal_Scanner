@@ -1,0 +1,12 @@
+# requirements.txt
+
+# pip3 uninstall crypto 
+# pip3 uninstall pycrypto 
+
+psutil~=6.0.0
+requests~=2.32.3
+winshell~=0.6
+pypiwin32~=223
+pycryptodome~=3.20.0
+WMI~=1.5.1
+rich~=13.7.1
