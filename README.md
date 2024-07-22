@@ -110,6 +110,7 @@ MAX_MSG = 1
 SUSPICIOUS_EXTENSIONS = [".exe", ".dll", ".bat", ".cmd", ".vbs", ".js", ".jse", ".wsf", ".hta", ".scr", ".pif", ".msi", ".com", ".reg", ".docm", ".xlsm", ".pptm", ".jar", ".php", ".py", ".sh", ".ps1"]
 
 MALSHARE_API_KEY = %MALSHARE_API_KEY%
+SKIP_PROCESS = False
 HISTORY_LOG = True
 LOGGING = True
 DEBUG = False
@@ -138,6 +139,7 @@ Open the script file with any text editor and edit these variables at the beginn
   MAX_MSG = <INT>
   SUSPICIOUS_EXTENSIONS = ['.exe', '.py', '.sh', ...]
   MALSHARE_API_KEY = "PUT_YOUR_KEY_HERE"
+  SKIP_PROCESS = <True|False>
   HISTORY_LOG = <True|False>
   LOGGING = <True|False>
   DEBUG = <True|False>
@@ -146,45 +148,74 @@ Open the script file with any text editor and edit these variables at the beginn
 #### 3. Input the values as arguments in the terminal
 You can use `-h` or `--help` to assist you with the parameters:
 ```
-python ./VTv3_Scanner.py -k VT_API_KEY -p PATH_1 [PATH_2 ...] [-t T_BOT_TOKEN -c T_CHAT_ID]|[--no_send] [--malshare_api_key MALSHARE_API_KEY] [-i STOP_INTERVAL] [-f CYCLES] [-m MAX_MSG] [-e SUS_EXT_1 [SUS_EXT_2 ...]] [--no_upload] [--debug]
+python ./VTv3_Scanner.py [-k VT_API_KEY] [-p PATH_1 [PATH_2 ...]] [-t T_BOT_TOKEN -c T_CHAT_ID]|[--no_send] [--malshare_api_key MALSHARE_API_KEY] [-i STOP_INTERVAL] [-f CYCLES] [-m MAX_MSG] [-e SUS_EXT_1 [SUS_EXT_2 ...]] [--no_upload] [--skip_process] [--no_history] [--no_log] [--debug]
 
 options:
   -h, --help            Show this help message and exit
   -k, --vt_api_key      VirusTotal API key (required)
-  -p, --paths           Relative or absolute or environment variable paths are accepted to scan (required)
+  -p, --paths           Folders/Files paths to scan (required)
   -t, --t_bot_token     Telegram bot token
   -c, --t_chat_id       Telegram chat ID
-  -i, --stop_interval   Stop Interval in minutes (0 for no interval)
-  -f, --cycles          Number of cycles to scan (0 for forever)
-  -m, --max_msg         Maximum number of messages to send per file (0 for unlimited)
+  -i, --stop_interval   Stop Interval in minutes
+  -f, --cycles          Number of scan cycles (0 for forever)
+  -m, --max_msg         Maximum number of messages per file (0 for unlimited)
   -e, --sus_ext         Suspicious file extensions
   --malshare_api_key    MalShare API key
   --no_send             Do not send alerts to Telegram
-  --no_upload           Do not upload files to VirusTotal for scanning if they do not exist
+  --no_upload           Do not upload new files to VirusTotal
+  --skip_process        Skip checking the processes of old scanned files
+  --no_history          Do not cache the history of the scan
+  --no_log              Do not log the output to a file
   --debug               Enable debug mode
 ```
+
 ## Use Cases
 1. Set scheduled task to run the script at user login or PC start.
 
     This Stackoverflow discussion may help you doing that: [How to run a python script using Task Scheduler with parameters](https://stackoverflow.com/questions/68010714/how-to-run-a-python-script-using-task-scheduler-with-parameters)
       
-    You can start the script without the console window by using `pythonw.exe` instead of `python.exe`, if you want to rely on the log files and Telegram messages rather than the console prints.
+    You can start the script without the console window by using `pythonw.exe` instead of `python.exe`, if you want to rely on the log files and Telegram messages rather than the console prints. You would also like to use `--skip_process` to skip checking the processes of old scanned files.
 
     * **Note**: This will require you to either edit the required values in the script file or pass them as parameters in the scheduled task command.
+    
+    * The scheduled task command would be something like this:
+      ```commandline
+      path/to/vt_env/Scripts/pythonw.exe VTv3_Scanner.py -k VT_API_KEY -p PATH_1 [PATH_2 ...] -t T_BOT_TOKEN -c T_CHAT_ID -i STOP_INTERVAL -f CYCLES --skip_process
+      ```
+  
+  2. Real-time Monitoring and Alerts
+
+      Implement real-time monitoring of directories for newly added or modified files, triggering immediate scans and alerts if suspicious activity is detected. This proactive approach can significantly reduce the window of opportunity for malware to cause harm.
+
+  3. Integration with Security Information and Event Management (SIEM) Systems
+
+      By changing the output logs pattern/format, the script can be integrated with SIEM systems to provide a centralized view of security-related events, allowing for quicker detection of patterns that may indicate a breach or malware infection.
+
+  4. Custom Malware Analysis and Reporting
+
+      Extend the script to not only detect but also perform a deeper analysis of flagged files, generating detailed reports on their behavior, potential impact, and recommended mitigation strategies. This can be invaluable for understanding complex threats.
+
+  5. Compliance and Audit Reporting
+
+      Automate the generation of reports detailing scan results, actions taken, and compliance with internal policies or external regulations. This documentation can be crucial during audits or reviews of security practices.
+
+  6. Integration with Other Security Tools
+
+      Describe how the script can work in tandem with firewalls, antivirus software, and other security measures to provide a layered defense against malware. This could include triggering scans based on firewall logs or sharing findings with antivirus solutions for broader protection.
 
 ## Screenshots
 - Clean File
-  <p align= "center" style="text-align: center"><img src="res/img/Clean.png" alt="Clean"></p>
+  <p align="center" style="text-align: center"><img src="res/img/Clean.png" alt="Clean" height="500"></p>
 - Malicious File
-  <p align= "center" style="text-align: center"><img src="res/img/Malicious.png" alt="Malicious"></p>
+  <p align= "center" style="text-align: center"><img src="res/img/Malicious.png" alt="Malicious" height="500"></p>
 - Suspicious Extension File
-  <p align= "center" style="text-align: center"><img src="res/img/Suspicious.png" alt="Suspicious"></p>
+  <p align= "center" style="text-align: center"><img src="res/img/Suspicious.png" alt="Suspicious" height="500"></p>
 - Old Scanned Files
-  <p align= "center" style="text-align: center"><img src="res/img/Old.png" alt="Old"></p>
+  <p align= "center" style="text-align: center"><img src="res/img/Old.png" alt="Old" height="500"></p>
 - New File that doesn't exist in the VirusTotal database (Upload enabled)
-  <p align= "center" style="text-align: center"><img src="res/img/New.png" alt="New"></p>
+  <p align= "center" style="text-align: center"><img src="res/img/New.png" alt="New" height="500"></p>
 - Telegram Alert Messages
-  <p align= "center" style="text-align: center"><img src="res/img/Telegram.png" alt="Telegram"></p>
+  <p align= "center" style="text-align: center"><img src="res/img/Telegram.png" alt="Telegram" height="500"></p>
 
 ## Similar Projects
 - [munin](https://github.com/Neo23x0/munin/tree/master) by Neo23x0
