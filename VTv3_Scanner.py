@@ -833,7 +833,7 @@ def Get_Message(**kwargs) -> str:
                 message.append("    Connections: No Active Connections")
             if i+1 != no_processes: message.append("  " + ("-" * 25))
     
-    else:
+    elif not SKIP_PROCESS:
         message.append("")
         message.append("Process Information: No Process Associated")
     
