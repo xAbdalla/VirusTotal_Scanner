@@ -41,6 +41,8 @@ SUSPICIOUS_EXTENSIONS = [
     ".jar", ".php", ".py", ".sh", ".ps1"
     ]
 
+SKIP_PROCESS = False  # Set to True to skip checking the processes of the scanned files
+
 HISTORY_LOG = True  # Set to False to disable saving the history of scanned files
 LOGGING = True  # Set to False to disable logging the alerts to a file
 DEBUG = False   # True for more detailed errors, Warning: may expose sensitive information
@@ -88,25 +90,42 @@ class CustomHelpFormatter(argparse.HelpFormatter):
 
 
 def Parse_Args():
-    global VT_API_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, PATHS, SCAN_INTERVAL, FOREVER, SUSPICIOUS_EXTENSIONS, DEBUG, MAX_MSG, UPLOAD, MALSHARE_API_KEY, NO_SEND
+    global VT_API_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, PATHS
+    global SCAN_INTERVAL, FOREVER, SUSPICIOUS_EXTENSIONS, DEBUG
+    global MAX_MSG, UPLOAD, MALSHARE_API_KEY, NO_SEND, SKIP_PROCESS, HISTORY_LOG, LOGGING
     
     parser = argparse.ArgumentParser(description="VirusTotal Scanner by xAbdalla",
+                                     epilog="Please follow GitHub for updates:https://github.com/xAbdalla/VirusTotal_Scanner",
                                      formatter_class=CustomHelpFormatter)
     parser.add_argument("-k", "--vt_api_key", help="VirusTotal API key (required)")
-    parser.add_argument("-p", "--paths", help="Relative or absolute or environment variable paths are accepted to scan (required)", nargs="+")
+    parser.add_argument("-p", "--paths", help="Folders/Files paths to scan (required)", nargs="+")
     parser.add_argument("-t", "--t_bot_token", help="Telegram bot token")
     parser.add_argument("-c", "--t_chat_id", help="Telegram chat ID")
-    parser.add_argument("-i", "--stop_interval", type=float, help="Stop Interval in minutes (0 for no interval)")
-    parser.add_argument("-f", "--cycles", type=int, help="Number of cycles to scan (0 for forever)")
-    parser.add_argument("-m", "--max_msg", type=int, help="Maximum number of messages to send per file (0 for unlimited)")
+    parser.add_argument("-i", "--stop_interval", type=float, help="Stop Interval in minutes")
+    parser.add_argument("-f", "--cycles", type=int, help="Number of scan cycles (0 for forever)")
+    parser.add_argument("-m", "--max_msg", type=int, help="Maximum number of messages per file (0 for unlimited)")
     parser.add_argument("-e", "--sus_ext", help="Suspicious file extensions", nargs="+")
     parser.add_argument("--malshare_api_key", help="MalShare API key")
     parser.add_argument("--no_send", help="Do not send alerts to Telegram", action="store_true")
-    parser.add_argument("--no_upload", help="Do not upload files to VirusTotal for scanning if not exist", action="store_false")
+    parser.add_argument("--no_upload", help="Do not upload new files to VirusTotal", action="store_false")
+    parser.add_argument("--skip_process", help="Skip checking the processes of old scanned files", action="store_true")
+    parser.add_argument("--no_history", help="Do not cache the history of the scan", action="store_false")
+    parser.add_argument("--no_log", help="Do not log the output to a file", action="store_false")
     parser.add_argument("--debug", help="Enable debug mode", action="store_true")
     args = parser.parse_args()
     
     args_dict = vars(args)
+    
+    if args_dict.get('vt_api_key') == None and not ("PUT" in VT_API_KEY):
+        args_dict['vt_api_key'] = VT_API_KEY
+    if args_dict.get('t_bot_token') == None and not ("PUT" in TELEGRAM_BOT_TOKEN):
+        args_dict['t_bot_token'] = TELEGRAM_BOT_TOKEN
+    if args_dict.get('t_chat_id') == None and not ("PUT" in TELEGRAM_CHAT_ID):
+        args_dict['t_chat_id'] = TELEGRAM_CHAT_ID
+    if args_dict.get('paths') == None and not (PATHS == []):
+        args_dict['paths'] = PATHS
+    if args_dict.get('malshare_api_key') == None and not ("PUT" in MALSHARE_API_KEY):
+        args_dict['malshare_api_key'] = MALSHARE_API_KEY
     
     if args_dict.get('vt_api_key', None):
         if not (args_dict.get('vt_api_key', None) and
@@ -166,6 +185,9 @@ def Parse_Args():
         else:
             MAX_MSG = MAX_MSG
         
+        SKIP_PROCESS = args_dict.get('skip_process', SKIP_PROCESS)
+        HISTORY_LOG = args_dict.get('no_history', HISTORY_LOG)
+        LOGGING = args_dict.get('no_log', LOGGING)
         NO_SEND = args_dict.get('no_send', NO_SEND)
         UPLOAD = args_dict.get('no_upload', UPLOAD)
         DEBUG = args_dict.get('debug', DEBUG)
@@ -266,14 +288,20 @@ def Check_Vars():
     if not VT_API_KEY:
         print("[X] VirusTotal API key is required to proceed.")
         exit()
+    else:
+        VT_API_KEY = os.path.expandvars(VT_API_KEY.strip())
         
     if not TELEGRAM_BOT_TOKEN:
         print("[X] Telegram bot token is required to proceed.")
         exit()
+    else:
+        TELEGRAM_BOT_TOKEN = os.path.expandvars(TELEGRAM_BOT_TOKEN.strip())
 
     if not TELEGRAM_CHAT_ID:
         print("[X] Telegram chat ID is required to proceed.")
         exit()
+    else:
+        TELEGRAM_CHAT_ID = os.path.expandvars(TELEGRAM_CHAT_ID.strip())
 
     if not PATHS:
         print("[X] No paths to scan. Please add some paths to scan.")
@@ -281,9 +309,10 @@ def Check_Vars():
     else:
         for i, path in enumerate(PATHS):
             # Replace environment variables in the path
-            PATHS[i] = os.path.expandvars(path).replace("\\", "/")
+            PATHS[i] = os.path.expandvars(path.strip()).replace("\\", "/")
     
     if "PUT" in MALSHARE_API_KEY: MALSHARE_API_KEY = ""
+    else: MALSHARE_API_KEY = os.path.expandvars(MALSHARE_API_KEY.strip())
     
     try:
         FOREVER = int(FOREVER)
@@ -312,8 +341,21 @@ def Check_Vars():
         print("[X] MAX_MSG (maximum number of messages) is not a valid integer number.")
         exit()
     
-    SUSPICIOUS_EXTENSIONS = list(set([str(ext).lower() for ext in SUSPICIOUS_EXTENSIONS]))
+    SUSPICIOUS_EXTENSIONS = list(set([str(ext).strip().lower() for ext in SUSPICIOUS_EXTENSIONS]))
     
+    try:
+        NO_SEND = bool(NO_SEND)
+        UPLOAD = bool(UPLOAD)
+        SKIP_PROCESS = bool(SKIP_PROCESS)
+        HISTORY_LOG = bool(HISTORY_LOG)
+        LOGGING = bool(LOGGING)
+        DEBUG = bool(DEBUG)
+    except:
+        print("[X] Invalid value for one of the optional settings.")
+        exit()
+        
+    if DEBUG:
+        print("[+] Variables checked successfully.")
     return True
 
 
@@ -321,7 +363,7 @@ def Save_logs(message: str) -> bool:
     try:
         if LOGGING:
             with open("logs.txt", "a") as f:
-                f.write(f"\n{datetime.datetime.now().strftime('%Y-%m-%d %I:%M:%S %p')}:\n\n{message}\n\n{"="*100}\n")
+                f.write(f"\n[+] Log Time: {datetime.datetime.now().strftime('%Y-%m-%d %I:%M:%S %p')}\n\n{message}\n\n{"="*100}\n")
         return True
     except Exception as e:
         print(f"[X] Error saving logs{f": {e}" if DEBUG else "."}")
@@ -601,7 +643,7 @@ def Upload_File_VT(file_path: str) -> dict:
 def Send_TeleMessage(message: str) -> bool:
     if NO_SEND: return True
     
-    message = message.replace("`", "'")
+    message = message.replace("\nVirusTotal", "\nVT")
     message = message.replace("\\", "/")
     # message = message.replace("\n\n", "\n")
     message = message.replace("  ", " ")
@@ -817,9 +859,9 @@ def Get_Process_Events_Win() -> dict:
                         pid = int(event[4].strip(), 16)
                         ppid = int(event[7].strip(), 16)
                         name = os.path.basename(event[5].strip())
-                        if not name: name = "Unknown Process Name"
+                        if not name: name = "Non-existent process"
                         pname = os.path.basename(event[13].strip())
-                        if not pname: pname = "Unknown Parent Process Name"                        
+                        if not pname: pname = "Non-existent process"                        
                         events[pid] = {'name': name, 'pid': pid, 'pname': pname, 'ppid': ppid}
 
             win32evtlog.CloseEventLog(handle)
@@ -882,9 +924,9 @@ def Get_Process_Info(executable_path: str) -> list[dict]:
             processes_data[-1]['pname'] = psutil.Process(process['pid']).parent().name()
         except:
             if process['ppid'] in events.keys():
-                processes_data[-1]['pname'] = events[process['ppid']].get('name', "Unknown")
+                processes_data[-1]['pname'] = events[process['ppid']].get('name', "Non-existent process")
             else:
-                processes_data[-1]['pname'] = "Unknown"
+                processes_data[-1]['pname'] = "Non-existent process"
         
         cmdline = process['cmdline']
         if cmdline:
@@ -909,15 +951,15 @@ def Get_Process_Info(executable_path: str) -> list[dict]:
                     p = psutil.Process(chain_pid[-1]).as_dict()
                     if p['ppid'] in events.keys():
                         chain_pid.append(p['ppid'])
-                        chain_name.append(events[p['ppid']].get('name', "Unknown"))
+                        chain_name.append(events[p['ppid']].get('name', "Non-existent process"))
                         break
                     else:
                         chain_pid.append(p.get('ppid', 'Unknown'))
-                        chain_name.append("Unknown")
+                        chain_name.append("Non-existent process")
                         break
                 except:
                     chain_pid.append('Unknown')
-                    chain_name.append("Unknown")
+                    chain_name.append("Non-existent process")
                     break
         chain_pid = map(str, reversed(chain_pid))
         chain_name = map(str, reversed(chain_name))
@@ -1139,7 +1181,10 @@ def Scan_Paths(paths: list[str] = []):
                 if file_extension in SUSPICIOUS_EXTENSIONS:
                     message_data['suspicious_ext'] = True
                 message_data['last_checked'] = checked_files[file_hash]['last_checked']
-                processes_info = Get_Process_Info(file_path)
+                if not SKIP_PROCESS:
+                    processes_info = Get_Process_Info(file_path)
+                else:
+                    processes_info = []
                 message = Get_Message(processes_info= processes_info, **message_data)
                 
                 print(f"\n{message}")
