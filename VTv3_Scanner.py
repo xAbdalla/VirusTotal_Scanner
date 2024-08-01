@@ -1205,12 +1205,14 @@ if __name__ == "__main__":
     if not DEBUG: os.system('cls' if os.name == 'nt' else 'clear')
     
     print("[+][+][+] VirusTotal Scanner by xAbdalla [+][+][+]\n")
-    print(f"[+] Monitoring the following paths:{f" (Upload Enabled)" if UPLOAD else ' (Upload Disabled)'}")
+    print(f"[+] Monitoring the following paths:")
     for i, path in enumerate(PATHS):
         print(f"      {i+1}. '{path}'")
     print(f"[+] Suspicious Extensions: {', '.join(SUSPICIOUS_EXTENSIONS)}")
     print(f"[+] Stop Interval: {SCAN_INTERVAL} minutes")
     print(f"[+] Number of Cycles: {FOREVER if FOREVER else 'Forever'}")
+    print(f"[+] VirusTotal Upload: {'Enabled' if UPLOAD else 'Disabled'}")
+    if UPLOAD: print(f"[+] VirusTotal Terms of Service: https://docs.virustotal.com/docs/terms-of-service#sample-and-community-content-guidelines")
     if MALSHARE_API_KEY: print(f"[+] MalShare API: Enabled")
     if NO_SEND:
         print(f"[+] Telegram Alert: Disabled.")
@@ -1232,6 +1234,7 @@ if __name__ == "__main__":
             pass
     
     print()
+    print(f"[+] Debug Mode: {'Enabled' if DEBUG else 'Disabled'}")
     print(f"[+] Press (Ctrl + C) to stop the script. (You may need to press it multiple times)")
     
     t1 = datetime.datetime.now()
